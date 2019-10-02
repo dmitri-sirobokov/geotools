@@ -22,8 +22,6 @@ import org.geotools.data.csv.parse.CSVLatLonStrategy;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.simple.SimpleFeatureSource;
-import org.geotools.referencing.CRS;
-import org.geotools.referencing.CRS.AxisOrder;
 import org.geotools.test.TestData;
 import org.geotools.util.URLs;
 import org.junit.Before;
@@ -61,13 +59,7 @@ public class CSVDataStoreTest {
             if (x == -1) {
                 x = d;
             } else {
-                Coordinate coordinate;
-                if (CRS.getAxisOrder(CSVLatLonStrategy._CRS).equals(AxisOrder.NORTH_EAST)) {
-                    coordinate = new Coordinate(x, d);
-                } else {
-                    coordinate = new Coordinate(d, x);
-                }
-
+                Coordinate coordinate = new Coordinate(x, d);
                 x = -1;
                 result.add(coordinate);
             }

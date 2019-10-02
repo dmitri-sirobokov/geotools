@@ -490,8 +490,7 @@ public class CSVWriteTest {
         assertTrue("No Lat", line.contains("LAT"));
         assertTrue("No Lon", line.contains("LON"));
         line = lineReader.readLine();
-        // LatLonStrategy can switch the coordinate order
-        assertEquals("46.066667,11.116667,Trento,140,2002", line);
+        assertEquals("11.116667,46.066667,Trento,140,2002", line);
         file2.delete();
     }
 
