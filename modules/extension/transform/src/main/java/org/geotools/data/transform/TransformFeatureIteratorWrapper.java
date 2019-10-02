@@ -72,7 +72,6 @@ class TransformFeatureIteratorWrapper implements SimpleFeatureIterator {
                 fb.add(null);
             }
         }
-        fb.featureUserData(f);
 
         return fb.buildFeature(transformer.transformFid(f));
     }

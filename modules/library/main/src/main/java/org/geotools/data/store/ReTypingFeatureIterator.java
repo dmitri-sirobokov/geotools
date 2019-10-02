@@ -66,7 +66,6 @@ public class ReTypingFeatureIterator implements SimpleFeatureIterator {
                 final String xpath = types[i].getLocalName();
                 builder.add(next.getAttribute(xpath));
             }
-            builder.featureUserData(next);
 
             return builder.buildFeature(id);
         } catch (IllegalAttributeException e) {
