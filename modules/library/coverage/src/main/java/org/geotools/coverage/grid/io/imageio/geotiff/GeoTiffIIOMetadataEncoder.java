@@ -23,10 +23,8 @@ import it.geosolutions.imageio.plugins.tiff.TIFFTagSet;
 import java.awt.geom.AffineTransform;
 import java.util.Iterator;
 import java.util.Map;
-import javax.imageio.metadata.IIOMetadataNode;
 import org.geotools.util.KeySortedList;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+import org.jdom2.Element;
 
 /**
  * This class is responsible for encoding the geotiff tags into suitable metadata for the ImageIO
@@ -418,12 +416,12 @@ public class GeoTiffIIOMetadataEncoder {
     }
 
     public void assignTo(Element element) {
-        if (!element.getLocalName().equals(GeoTiffConstants.GEOTIFF_IIO_ROOT_ELEMENT_NAME)) {
+        if (!element.getName().equals(GeoTiffConstants.GEOTIFF_IIO_ROOT_ELEMENT_NAME)) {
             throw new IllegalArgumentException(
                     "root not found: " + GeoTiffConstants.GEOTIFF_IIO_ROOT_ELEMENT_NAME);
         }
 
-        final Element ifd1 = getChild(element, GeoTiffConstants.GEOTIFF_IFD_TAG);
+        final Element ifd1 = element.getChild(GeoTiffConstants.GEOTIFF_IFD_TAG);
 
         if (ifd1 == null) {
             throw new IllegalArgumentException(
@@ -431,26 +429,21 @@ public class GeoTiffIIOMetadataEncoder {
         }
 
         final Element ifd2 = createIFD();
-        String attribute = ifd2.getAttribute(GeoTiffConstants.GEOTIFF_TAGSETS_ATT_NAME);
         ifd1.setAttribute(
-                GeoTiffConstants.GEOTIFF_TAGSETS_ATT_NAME, "".equals(attribute) ? null : attribute);
+                GeoTiffConstants.GEOTIFF_TAGSETS_ATT_NAME,
+                ifd2.getAttributeValue(GeoTiffConstants.GEOTIFF_TAGSETS_ATT_NAME));
 
-        NodeList childNodes = ifd2.getChildNodes();
-        final Element[] childElems = new Element[childNodes.getLength()];
-        for (int i = 0; i < childNodes.getLength(); i++) {
-            final Element child = (Element) childNodes.item(i);
-            childElems[i] = child;
-        }
+        final Element[] childElems = (Element[]) ifd2.getChildren().toArray(new Element[0]);
         for (int i = 0; i < childElems.length; i++) {
             final Element child = childElems[i];
-            ifd2.removeChild(child);
-            ifd1.appendChild(child);
+            ifd2.removeContent(child);
+            ifd1.addContent(child);
         }
     }
 
     public Element createRootTree() {
-        final Element rootElement = newElement(GeoTiffConstants.GEOTIFF_IIO_ROOT_ELEMENT_NAME);
-        rootElement.appendChild(createIFD());
+        final Element rootElement = new Element(GeoTiffConstants.GEOTIFF_IIO_ROOT_ELEMENT_NAME);
+        rootElement.addContent(createIFD());
 
         return rootElement;
     }
@@ -583,35 +576,35 @@ public class GeoTiffIIOMetadataEncoder {
     }
 
     private Element createIFD() {
-        Element ifd = newElement(GeoTiffConstants.GEOTIFF_IFD_TAG);
+        Element ifd = new Element(GeoTiffConstants.GEOTIFF_IFD_TAG);
         ifd.setAttribute(
                 GeoTiffConstants.GEOTIFF_TAGSETS_ATT_NAME,
                 BaselineTIFFTagSet.class.getName() + "," + GeoTIFFTagSet.class.getName());
 
         if (modelPixelScale.isSet()) {
-            ifd.appendChild(createModelPixelScaleElement());
+            ifd.addContent(createModelPixelScaleElement());
         }
 
         if (isModelTiePointsSet()) {
-            ifd.appendChild(createModelTiePointsElement());
+            ifd.addContent(createModelTiePointsElement());
         } else if (isModelTransformationSet()) {
-            ifd.appendChild(createModelTransformationElement());
+            ifd.addContent(createModelTransformationElement());
         }
 
         if (getNumGeoKeyEntries() > 1) {
-            ifd.appendChild(createGeoKeyDirectoryElement());
+            ifd.addContent(createGeoKeyDirectoryElement());
         }
 
         if (numGeoTiffDoubleParams > 0) {
-            ifd.appendChild(createGeoDoubleParamsElement());
+            ifd.addContent(createGeoDoubleParamsElement());
         }
 
         if (numGeoTiffAsciiParams > 0) {
-            ifd.appendChild(createGeoAsciiParamsElement());
+            ifd.addContent(createGeoAsciiParamsElement());
         }
 
         if (isNodataSet) {
-            ifd.appendChild(createNoDataElement());
+            ifd.addContent(createNoDataElement());
         }
 
         if (isMetadataSet) {
@@ -684,16 +677,16 @@ public class GeoTiffIIOMetadataEncoder {
 
     private Element createGeoKeyDirectoryElement() {
         Element field = createFieldElement(getGeoKeyDirectoryTag());
-        Element data = newElement(GeoTiffConstants.GEOTIFF_SHORTS_TAG);
-        field.appendChild(data);
+        Element data = new Element(GeoTiffConstants.GEOTIFF_SHORTS_TAG);
+        field.addContent(data);
         int[] values;
 
         // GeoKey directory root tag
         values = getGeoKeyEntryAt(0).getValues();
-        data.appendChild(createShortElement(values[0]));
-        data.appendChild(createShortElement(values[1]));
-        data.appendChild(createShortElement(values[3]));
-        data.appendChild(createShortElement(values[2]));
+        data.addContent(createShortElement(values[0]));
+        data.addContent(createShortElement(values[1]));
+        data.addContent(createShortElement(values[3]));
+        data.addContent(createShortElement(values[2]));
 
         // GeoKeys
         for (int i = 1; i < numGeoTiffEntries; i++) {
@@ -701,7 +694,7 @@ public class GeoTiffIIOMetadataEncoder {
             int lenght = values.length;
             for (int j = 0; j < lenght; j++) {
                 Element GeoKeyRecord = createShortElement(values[j]);
-                data.appendChild(GeoKeyRecord);
+                data.addContent(GeoKeyRecord);
             }
         }
 
@@ -710,11 +703,11 @@ public class GeoTiffIIOMetadataEncoder {
 
     private Element createGeoDoubleParamsElement() {
         Element field = createFieldElement(getGeoDoubleParamsTag());
-        Element data = newElement(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
-        field.appendChild(data);
+        Element data = new Element(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
+        field.addContent(data);
         for (int i = 0; i < numGeoTiffDoubleParams; i++) {
             Element param = createDoubleElement(geoTiffDoubleParams[i]);
-            data.appendChild(param);
+            data.addContent(param);
         }
 
         return field;
@@ -722,17 +715,17 @@ public class GeoTiffIIOMetadataEncoder {
 
     private Element createGeoAsciiParamsElement() {
         Element field = createFieldElement(getGeoAsciiParamsTag());
-        Element data = newElement(GeoTiffConstants.GEOTIFF_ASCIIS_TAG);
-        field.appendChild(data);
-        data.appendChild(createAsciiElement(geoTiffAsciiParams.toString()));
+        Element data = new Element(GeoTiffConstants.GEOTIFF_ASCIIS_TAG);
+        field.addContent(data);
+        data.addContent(createAsciiElement(geoTiffAsciiParams.toString()));
 
         return field;
     }
 
     private Element createModelPixelScaleElement() {
         Element field = createFieldElement(getModelPixelScaleTag());
-        Element data = newElement(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
-        field.appendChild(data);
+        Element data = new Element(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
+        field.addContent(data);
         addDoubleElements(data, modelPixelScale.getValues());
 
         return field;
@@ -740,8 +733,8 @@ public class GeoTiffIIOMetadataEncoder {
 
     private Element createModelTransformationElement() {
         Element field = createFieldElement(getModelTransformationTag());
-        Element data = newElement(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
-        field.appendChild(data);
+        Element data = new Element(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
+        field.addContent(data);
         addDoubleElements(data, modelTransformation);
 
         return field;
@@ -749,8 +742,8 @@ public class GeoTiffIIOMetadataEncoder {
 
     private Element createModelTiePointsElement() {
         Element field = createFieldElement(getModelTiePointTag());
-        Element data = newElement(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
-        field.appendChild(data);
+        Element data = new Element(GeoTiffConstants.GEOTIFF_DOUBLES_TAG);
+        field.addContent(data);
 
         for (int i = 0; i < numModelTiePoints; i++) {
             addDoubleElements(data, modelTiePoints[i].getData());
@@ -761,9 +754,9 @@ public class GeoTiffIIOMetadataEncoder {
 
     private Element createNoDataElement() {
         Element field = createFieldElement(getNoDataTag());
-        Element data = newElement(GeoTiffConstants.GEOTIFF_ASCIIS_TAG);
-        field.appendChild(data);
-        data.appendChild(createAsciiElement(Double.toString(noData)));
+        Element data = new Element(GeoTiffConstants.GEOTIFF_ASCIIS_TAG);
+        field.addContent(data);
+        data.addContent(createAsciiElement(Double.toString(noData)));
         return field;
     }
 
@@ -783,10 +776,10 @@ public class GeoTiffIIOMetadataEncoder {
                     final TIFFTag tag = getAsciiTag(set, Integer.valueOf(keyName));
                     if (tag != null) {
                         Element field = createFieldElement(tag);
-                        Element data = newElement(GeoTiffConstants.GEOTIFF_ASCIIS_TAG);
-                        field.appendChild(data);
-                        data.appendChild(createAsciiElement(value));
-                        ifd.appendChild(field);
+                        Element data = new Element(GeoTiffConstants.GEOTIFF_ASCIIS_TAG);
+                        field.addContent(data);
+                        data.addContent(createAsciiElement(value));
+                        ifd.addContent(field);
                     }
                 }
             }
@@ -794,7 +787,7 @@ public class GeoTiffIIOMetadataEncoder {
     }
 
     private Element createFieldElement(final TIFFTag tag) {
-        Element field = newElement(GeoTiffConstants.GEOTIFF_FIELD_TAG);
+        Element field = new Element(GeoTiffConstants.GEOTIFF_FIELD_TAG);
         field.setAttribute(GeoTiffConstants.NUMBER_ATTRIBUTE, String.valueOf(tag.getNumber()));
         field.setAttribute(GeoTiffConstants.NAME_ATTRIBUTE, tag.getName());
 
@@ -802,21 +795,21 @@ public class GeoTiffIIOMetadataEncoder {
     }
 
     private Element createShortElement(final int value) {
-        Element GeoKeyRecord = newElement(GeoTiffConstants.GEOTIFF_SHORT_TAG);
+        Element GeoKeyRecord = new Element(GeoTiffConstants.GEOTIFF_SHORT_TAG);
         GeoKeyRecord.setAttribute(GeoTiffConstants.VALUE_ATTRIBUTE, String.valueOf(value));
 
         return GeoKeyRecord;
     }
 
     private Element createDoubleElement(final double value) {
-        Element param = newElement(GeoTiffConstants.GEOTIFF_DOUBLE_TAG);
+        Element param = new Element(GeoTiffConstants.GEOTIFF_DOUBLE_TAG);
         param.setAttribute(GeoTiffConstants.VALUE_ATTRIBUTE, String.valueOf(value));
 
         return param;
     }
 
     private Element createAsciiElement(final String value) {
-        Element param = newElement(GeoTiffConstants.GEOTIFF_ASCII_TAG);
+        Element param = new Element(GeoTiffConstants.GEOTIFF_ASCII_TAG);
         param.setAttribute(GeoTiffConstants.VALUE_ATTRIBUTE, String.valueOf(value));
 
         return param;
@@ -826,7 +819,7 @@ public class GeoTiffIIOMetadataEncoder {
         final int length = values.length;
         for (int j = 0; j < length; j++) {
             Element GeoKeyRecord = createDoubleElement(values[j]);
-            data.appendChild(GeoKeyRecord);
+            data.addContent(GeoKeyRecord);
         }
     }
 
@@ -843,21 +836,5 @@ public class GeoTiffIIOMetadataEncoder {
     public void setTiffTagsMetadata(Map<String, String> metadata) {
         this.tiffTagsMetadata = metadata;
         isMetadataSet = true;
-    }
-
-    private Element newElement(String name) {
-        return new IIOMetadataNode(name);
-    }
-
-    /** @return the first matching child element, or null if not found */
-    private Element getChild(Element element, String childName) {
-        NodeList childNodes = element.getChildNodes();
-        for (int i = 0; i < childNodes.getLength(); i++) {
-            Element child = (Element) childNodes.item(i);
-            if (childName.equals(child.getLocalName())) {
-                return child;
-            }
-        }
-        return null;
     }
 }
